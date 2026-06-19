@@ -1,5 +1,6 @@
 import { anthropic } from '@/lib/anthropic'
 import { NextRequest, NextResponse } from 'next/server'
+import type Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(req: NextRequest) {
   const { topic, platform, tone, companyName, industry } = await req.json()
@@ -17,24 +18,31 @@ export async function POST(req: NextRequest) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
+    tool_choice: { type: 'tool', name: 'create_post' },
+    tools: [{
+      name: 'create_post',
+      description: 'Cria o título e o corpo de um post para redes sociais',
+      input_schema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Título curto do post' },
+          body: { type: 'string', description: 'Texto do post pronto a publicar' },
+        },
+        required: ['title', 'body'],
+      },
+    }],
     messages: [{
       role: 'user',
       content: `Cria um post para ${platform} para a empresa "${companyName}" do sector "${industry || 'geral'}".
 
 Tema: ${topic}
 Tom: ${tone || 'profissional e envolvente'}
-Limite: ${constraint}
-
-Retorna APENAS um JSON:
-{
-  "title": "título curto do post",
-  "body": "texto do post pronto a publicar"
-}`
+Limite: ${constraint}`
     }]
   })
 
-  const raw = (message.content[0] as { text: string }).text
-  const json = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim())
+  const toolUse = message.content.find(b => b.type === 'tool_use') as Anthropic.ToolUseBlock | undefined
+  if (!toolUse) return NextResponse.json({ error: 'Sem resposta da IA' }, { status: 502 })
 
-  return NextResponse.json(json)
+  return NextResponse.json(toolUse.input)
 }

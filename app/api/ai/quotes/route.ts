@@ -1,5 +1,6 @@
 import { anthropic } from '@/lib/anthropic'
 import { NextRequest, NextResponse } from 'next/server'
+import type Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(req: NextRequest) {
   const { clientName, services, notes, companyName, industry } = await req.json()
@@ -9,6 +10,30 @@ export async function POST(req: NextRequest) {
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
+    tool_choice: { type: 'tool', name: 'create_quote' },
+    tools: [{
+      name: 'create_quote',
+      description: 'Cria uma proposta comercial com valores e detalhe de serviços',
+      input_schema: {
+        type: 'object',
+        properties: {
+          content: { type: 'string', description: 'Texto completo da proposta' },
+          total: { type: 'number', description: 'Total em euros' },
+          breakdown: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                service: { type: 'string' },
+                price: { type: 'number' },
+              },
+              required: ['service', 'price'],
+            },
+          },
+        },
+        required: ['content', 'total', 'breakdown'],
+      },
+    }],
     messages: [{
       role: 'user',
       content: `És um assistente profissional de vendas para a empresa "${companyName}" do sector "${industry || 'geral'}".
@@ -24,19 +49,12 @@ A proposta deve incluir:
 3. Descrição dos serviços com valor percebido
 4. Estimativa de investimento total (cria valores realistas baseados nos serviços)
 5. Próximos passos
-6. Fecho profissional
-
-Retorna APENAS um JSON com este formato:
-{
-  "content": "texto completo da proposta",
-  "total": número total em euros,
-  "breakdown": [{"service": "nome", "price": número}]
-}`
+6. Fecho profissional`
     }]
   })
 
-  const raw = (message.content[0] as { text: string }).text
-  const json = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim())
+  const toolUse = message.content.find(b => b.type === 'tool_use') as Anthropic.ToolUseBlock | undefined
+  if (!toolUse) return NextResponse.json({ error: 'Sem resposta da IA' }, { status: 502 })
 
-  return NextResponse.json(json)
+  return NextResponse.json(toolUse.input)
 }
