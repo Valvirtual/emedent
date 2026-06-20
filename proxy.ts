@@ -29,14 +29,18 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  const isResetPasswordRoute = request.nextUrl.pathname.startsWith('/reset-password')
+
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/register')
+    request.nextUrl.pathname.startsWith('/register') ||
+    request.nextUrl.pathname.startsWith('/forgot-password') ||
+    isResetPasswordRoute
 
   if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !isResetPasswordRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

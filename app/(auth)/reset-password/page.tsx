@@ -4,27 +4,24 @@ export const dynamic = 'force-dynamic'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
+export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       setError(error.message)
@@ -38,40 +35,20 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--background)' }}>
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
             <span style={{ color: 'var(--primary)' }}>pyme</span>tool
           </h1>
-          <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>Entre na sua conta</p>
+          <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>Defina a nova password</p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl p-8 border" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <p className="text-sm text-red-400 bg-red-900/20 border border-red-800 p-3 rounded-xl">{error}</p>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="email@empresa.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="h-11 rounded-xl border"
-                style={{ background: 'var(--secondary)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Password</Label>
-                <Link href="/forgot-password" className="text-sm hover:underline" style={{ color: 'var(--primary)' }}>
-                  Esqueceu a senha?
-                </Link>
-              </div>
+              <Label htmlFor="password" className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>Nova password</Label>
               <Input
                 id="password"
                 type="password"
@@ -80,6 +57,7 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 className="h-11 rounded-xl border"
                 style={{ background: 'var(--secondary)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                minLength={6}
                 required
               />
             </div>
@@ -89,17 +67,10 @@ export default function LoginPage() {
               style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
               disabled={loading}
             >
-              {loading ? 'A entrar...' : 'Entrar'}
+              {loading ? 'A guardar...' : 'Guardar nova password'}
             </Button>
           </form>
         </div>
-
-        <p className="text-sm text-center mt-5" style={{ color: 'var(--muted-foreground)' }}>
-          Não tem conta?{' '}
-          <Link href="/register" className="font-medium hover:underline" style={{ color: 'var(--primary)' }}>
-            Registar
-          </Link>
-        </p>
       </div>
     </div>
   )
