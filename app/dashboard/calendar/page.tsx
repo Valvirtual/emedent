@@ -70,17 +70,24 @@ export default function CalendarPage() {
     if (!form.topic) return toast.error('Introduza um tema')
     setGenerating(true)
     try {
-      const { data: config } = await supabase.from('config').select('company_name, industry, target_audience').single()
+      const { data: config } = await supabase
+        .from('config')
+        .select('company_name, industry, target_audience, audience_detail, description, usp, tone_of_voice, location')
+        .single()
       const res = await fetch('/api/ai/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: form.topic,
           platform: form.platform,
-          tone: form.tone,
+          tone: form.tone || config?.tone_of_voice || '',
           companyName: config?.company_name ?? 'Nossa empresa',
           industry: config?.industry ?? '',
           targetAudience: config?.target_audience ?? 'b2c',
+          audienceDetail: config?.audience_detail ?? '',
+          description: config?.description ?? '',
+          usp: config?.usp ?? '',
+          location: config?.location ?? '',
         }),
       })
       const result = await res.json()

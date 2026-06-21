@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(req: NextRequest) {
-  const { topic, platform, tone, companyName, industry, targetAudience } = await req.json()
+  const { topic, platform, tone, companyName, industry, targetAudience, audienceDetail, description, usp, location } = await req.json()
 
   const limits: Record<string, string> = {
     instagram: '2200 caracteres, use hashtags relevantes (5-10), tom visual',
@@ -55,6 +55,10 @@ Regras de copy a seguir sempre:
     messages: [{
       role: 'user',
       content: `Cria um post para ${platform} para a empresa "${companyName}" do sector "${industry || 'geral'}".
+${description ? `O que a empresa faz: ${description}` : ''}
+${usp ? `Diferencial da empresa: ${usp}` : ''}
+${audienceDetail ? `Cliente específico: ${audienceDetail}` : ''}
+${location ? `Área de atuação: ${location}` : ''}
 
 Tema: ${topic}
 Tom: ${tone || 'profissional e envolvente'}
