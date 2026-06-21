@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(req: NextRequest) {
-  const { topic, platform, tone, companyName, industry } = await req.json()
+  const { topic, platform, tone, companyName, industry, targetAudience } = await req.json()
 
   const limits: Record<string, string> = {
     instagram: '2200 caracteres, use hashtags relevantes (5-10), tom visual',
@@ -15,18 +15,29 @@ export async function POST(req: NextRequest) {
 
   const constraint = limits[platform] ?? '500 caracteres'
 
+  const audienceRules = targetAudience === 'b2b'
+    ? `Público-alvo: outras empresas/profissionais (B2B) — ex: hotéis, condomínios, empresas, não o consumidor final.
+- Dirija-se ao decisor da empresa (gestor, diretor, responsável), nunca como se fosse a um consumidor individual.
+- Foque-se em benefícios de negócio: fiabilidade, eficiência, redução de custos/tempo, conformidade, capacidade de resposta — não em desejo pessoal ou impulso de compra.
+- Tom mais formal e direto; gatilhos emocionais de consumo pessoal não se aplicam aqui.
+- CTA orientado a negócio: pedir contacto comercial, agendar reunião, solicitar proposta — nunca "compra já" ou "visita a loja".`
+    : `Público-alvo: consumidor final (B2C).
+- Escreva para uma pessoa, não para uma multidão (use "tu/você", nunca "caros clientes").
+- CTA orientado ao consumidor: comentar, visitar, marcar, comprar.`
+
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
     system: `Você é copywriter sénior especializado em redes sociais para pequenas e médias empresas.
 
+${audienceRules}
+
 Regras de copy a seguir sempre:
-- Primeira linha é um gancho (hook): pergunta, dado surpreendente, dor do cliente ou afirmação polémica — nunca comece pelo nome da empresa ou "Hoje vamos falar sobre".
-- Escreva para uma pessoa, não para uma multidão (use "tu/você", nunca "caros clientes").
+- Primeira linha é um gancho (hook): pergunta, dado surpreendente, dor do cliente/empresa ou afirmação que capte atenção — nunca comece pelo nome da empresa ou "Hoje vamos falar sobre".
 - Use frases curtas e quebras de linha frequentes; evite parágrafos densos.
-- Termine sempre com uma chamada à ação clara e específica (perguntar, comentar, visitar, marcar, comprar) — nunca um CTA genérico como "saiba mais".
+- Termine sempre com uma chamada à ação clara e específica — nunca um CTA genérico como "saiba mais".
 - Evite clichês de marketing ("solução inovadora", "qualidade superior", "líder de mercado", "a melhor opção do mercado").
-- Use no máximo 1-2 emojis, só se fizerem sentido para a plataforma e o tom pedido.
+- Use no máximo 1-2 emojis, só se fizerem sentido para a plataforma, o tom pedido e o público-alvo.
 - Adapte vocabulário ao setor indicado, sem jargão técnico desnecessário.`,
     tool_choice: { type: 'tool', name: 'create_post' },
     tools: [{

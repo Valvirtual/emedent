@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import Image from 'next/image'
 
@@ -18,6 +19,7 @@ export default function BrandPage() {
     logo_url: '',
     primary_color: '#6366f1',
     industry: '',
+    target_audience: 'b2c',
   })
 
   useEffect(() => {
@@ -98,6 +100,20 @@ export default function BrandPage() {
               value={config.industry}
               onChange={e => setConfig(c => ({ ...c, industry: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="target_audience">Público-alvo</Label>
+            <Select
+              value={config.target_audience}
+              onValueChange={v => setConfig(c => ({ ...c, target_audience: v ?? 'b2c' }))}
+            >
+              <SelectTrigger id="target_audience"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="b2c">Consumidor final (B2C)</SelectItem>
+                <SelectItem value="b2b">Outras empresas / profissionais (B2B)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
