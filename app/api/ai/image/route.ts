@@ -28,7 +28,10 @@ Style: clean, modern, high-quality marketing photography, no text or logos overl
   const { error } = await supabase.storage.from('post-media').upload(path, imageBuffer, {
     contentType: 'image/webp',
   })
-  if (error) return NextResponse.json({ error: 'Erro ao guardar imagem' }, { status: 500 })
+  if (error) {
+    console.error('Erro ao guardar imagem no storage:', error)
+    return NextResponse.json({ error: 'Erro ao guardar imagem' }, { status: 500 })
+  }
 
   const { data: { publicUrl } } = supabase.storage.from('post-media').getPublicUrl(path)
   return NextResponse.json({ image_url: publicUrl })
