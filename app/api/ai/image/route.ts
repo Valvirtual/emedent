@@ -15,7 +15,7 @@ Style: clean, modern, realistic photography, soft natural lighting, subtle accen
 Plain photograph only: absolutely no text, no letters, no words, no captions, no logos, no watermarks, no signage, no badges, no UI elements of any kind anywhere in the image.`
 
   const output = await replicate.run(IMAGE_MODEL, {
-    input: { prompt, aspect_ratio: '1:1' },
+    input: { prompt, aspect_ratio: '1:1', output_format: 'jpg' },
   }) as unknown as { url: () => URL }[]
 
   const imageOutput = Array.isArray(output) ? output[0] : output
@@ -25,9 +25,9 @@ Plain photograph only: absolutely no text, no letters, no words, no captions, no
   const imageBuffer = await imageResponse.arrayBuffer()
 
   const supabase = await createClient()
-  const path = `${randomUUID()}.webp`
+  const path = `${randomUUID()}.jpg`
   const { error } = await supabase.storage.from('post-media').upload(path, imageBuffer, {
-    contentType: 'image/webp',
+    contentType: 'image/jpeg',
   })
   if (error) {
     console.error('Erro ao guardar imagem no storage:', error)

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, Trash2, Download, Copy } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns'
 import { pt } from 'date-fns/locale'
 import Image from 'next/image'
@@ -156,6 +156,23 @@ export default function CalendarPage() {
     load()
   }
 
+  async function handleCopyText(text: string) {
+    await navigator.clipboard.writeText(text)
+    toast.success('Texto copiado')
+  }
+
+  async function handleDownloadImage(url: string, title: string) {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = `${slug || 'post'}.jpg`
+    a.click()
+    URL.revokeObjectURL(blobUrl)
+  }
+
   const days = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) })
   const startPad = getDay(startOfMonth(currentMonth))
 
@@ -295,6 +312,16 @@ export default function CalendarPage() {
               </div>
             )}
             <p className="text-sm whitespace-pre-wrap">{selected?.body}</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => selected && handleCopyText(selected.body)}>
+                <Copy className="w-3.5 h-3.5 mr-1" />Copiar texto
+              </Button>
+              {selected?.image_url && (
+                <Button variant="outline" size="sm" onClick={() => handleDownloadImage(selected.image_url!, selected.title)}>
+                  <Download className="w-3.5 h-3.5 mr-1" />Descarregar imagem
+                </Button>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Label className="text-xs">Estado:</Label>
               <Select value={selected?.status ?? 'draft'} onValueChange={v => { if (selected && v) handleStatusChange(selected.id, v) }}>
