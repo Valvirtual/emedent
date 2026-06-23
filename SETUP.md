@@ -25,8 +25,8 @@ npm install
 
 1. Aceda a [supabase.com](https://supabase.com) → New project
 2. Guarde: **URL do projecto** e **anon key** (Settings → API)
-3. No SQL Editor, execute o conteúdo de `supabase/migrations/001_initial.sql`, `002_target_audience.sql`, `003_brand_identity.sql` e `004_post_media.sql`
-4. Em Storage, crie dois buckets com acesso **público**: `brand` e `post-media`
+3. No SQL Editor, execute o conteúdo de `supabase/migrations/001_initial.sql`, `002_target_audience.sql`, `003_brand_identity.sql`, `004_post_media.sql` e `005_post_media_storage_policy.sql`
+4. Em Storage, crie dois buckets com acesso **público**: `brand` e `post-media` (marcar "Public" só permite leitura — o passo 3 acima já cria as policies de upload necessárias)
 
 ### 3. Configurar variáveis de ambiente
 
