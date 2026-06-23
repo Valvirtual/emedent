@@ -6,12 +6,13 @@ import { randomUUID } from 'crypto'
 const IMAGE_MODEL = 'black-forest-labs/flux-schnell'
 
 export async function POST(req: NextRequest) {
-  const { topic, body, industry, tone, primaryColor, companyName } = await req.json()
+  const { topic, body, industry, tone, primaryColor } = await req.json()
 
-  const prompt = `Social media post image for "${companyName}" (${industry || 'general'} industry).
+  const prompt = `High-quality marketing photograph for a social media post, ${industry || 'general'} industry.
 Topic: ${topic}. Mood/tone: ${tone || 'professional and engaging'}.
 Context: ${body || ''}
-Style: clean, modern, high-quality marketing photography, no text or logos overlaid, accent color ${primaryColor || '#6366f1'}.`
+Style: clean, modern, realistic photography, soft natural lighting, subtle accent of color ${primaryColor || '#6366f1'}.
+Plain photograph only: absolutely no text, no letters, no words, no captions, no logos, no watermarks, no signage, no badges, no UI elements of any kind anywhere in the image.`
 
   const output = await replicate.run(IMAGE_MODEL, {
     input: { prompt, aspect_ratio: '1:1' },
