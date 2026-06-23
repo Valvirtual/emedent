@@ -25,8 +25,8 @@ npm install
 
 1. Aceda a [supabase.com](https://supabase.com) → New project
 2. Guarde: **URL do projecto** e **anon key** (Settings → API)
-3. No SQL Editor, execute o conteúdo de `supabase/migrations/001_initial.sql`
-4. Em Storage, crie um bucket chamado `brand` com acesso **público**
+3. No SQL Editor, execute o conteúdo de `supabase/migrations/001_initial.sql`, `002_target_audience.sql`, `003_brand_identity.sql` e `004_post_media.sql`
+4. Em Storage, crie dois buckets com acesso **público**: `brand` e `post-media`
 
 ### 3. Configurar variáveis de ambiente
 
@@ -40,6 +40,7 @@ Edite `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ANTHROPIC_API_KEY=sk-ant-...
+REPLICATE_API_TOKEN=r8_...
 ```
 
 ### 4. Testar localmente
@@ -88,6 +89,7 @@ No painel Vercel → Settings → Domains → adicione o domínio do cliente.
 | Vercel | €0 (free tier) |
 | Supabase | €0 (free tier) |
 | Anthropic API | ~€5–15 (uso moderado) |
+| Replicate (imagens) | ~€2–8 (uso moderado) |
 | Domínio | ~€0,80/mês |
 | **Total** | **~€6–16/mês** |
 

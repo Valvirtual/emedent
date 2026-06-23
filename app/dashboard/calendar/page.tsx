@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Plus, Sparkles, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns'
 import { pt } from 'date-fns/locale'
+import Image from 'next/image'
 
 type Post = {
   id: string
@@ -22,6 +23,7 @@ type Post = {
   scheduled_at: string
   status: 'draft' | 'scheduled' | 'published'
   created_at: string
+  image_url?: string
 }
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok', 'twitter']
@@ -41,7 +43,7 @@ export default function CalendarPage() {
   const [open, setOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [selected, setSelected] = useState<Post | null>(null)
-  const [generating, setGenerating] = useState(false)
+  const [generatingStage, setGeneratingStage] = useState<'idle' | 'text' | 'image'>('idle')
   const [form, setForm] = useState({
     topic: '',
     platform: 'instagram',
@@ -49,6 +51,7 @@ export default function CalendarPage() {
     scheduled_at: format(new Date(), 'yyyy-MM-dd'),
     title: '',
     body: '',
+    image_url: '',
     generated: false,
   })
 
@@ -68,12 +71,13 @@ export default function CalendarPage() {
 
   async function handleGenerate() {
     if (!form.topic) return toast.error('Introduza um tema')
-    setGenerating(true)
     try {
       const { data: config } = await supabase
         .from('config')
-        .select('company_name, industry, target_audience, audience_detail, description, usp, tone_of_voice, location')
+        .select('company_name, industry, target_audience, audience_detail, description, usp, tone_of_voice, location, primary_color')
         .single()
+
+      setGeneratingStage('text')
       const res = await fetch('/api/ai/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,11 +96,32 @@ export default function CalendarPage() {
       })
       const result = await res.json()
       setForm(f => ({ ...f, title: result.title, body: result.body, generated: true }))
-      toast.success('Conteúdo gerado')
+      toast.success('Texto gerado')
+
+      setGeneratingStage('image')
+      const imageRes = await fetch('/api/ai/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: form.topic,
+          body: result.body,
+          industry: config?.industry ?? '',
+          tone: form.tone || config?.tone_of_voice || '',
+          primaryColor: config?.primary_color ?? '',
+          companyName: config?.company_name ?? 'Nossa empresa',
+        }),
+      })
+      const imageResult = await imageRes.json()
+      if (imageResult.image_url) {
+        setForm(f => ({ ...f, image_url: imageResult.image_url }))
+        toast.success('Imagem gerada')
+      } else {
+        toast.error('Erro ao gerar imagem')
+      }
     } catch {
       toast.error('Erro ao gerar conteúdo')
     } finally {
-      setGenerating(false)
+      setGeneratingStage('idle')
     }
   }
 
@@ -109,12 +134,13 @@ export default function CalendarPage() {
       platform: [form.platform],
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       status: 'draft',
+      image_url: form.image_url || null,
     })
 
     if (error) { toast.error('Erro ao guardar'); return }
     toast.success('Post adicionado ao calendário')
     setOpen(false)
-    setForm({ topic: '', platform: 'instagram', tone: '', scheduled_at: format(new Date(), 'yyyy-MM-dd'), title: '', body: '', generated: false })
+    setForm({ topic: '', platform: 'instagram', tone: '', scheduled_at: format(new Date(), 'yyyy-MM-dd'), title: '', body: '', image_url: '', generated: false })
     load()
   }
 
@@ -216,9 +242,9 @@ export default function CalendarPage() {
               <Label>Tom de voz (opcional)</Label>
               <Input value={form.tone} onChange={e => setForm(f => ({ ...f, tone: e.target.value }))} placeholder="ex: divertido, formal, motivador..." />
             </div>
-            <Button variant="outline" onClick={handleGenerate} disabled={generating} className="w-full">
+            <Button variant="outline" onClick={handleGenerate} disabled={generatingStage !== 'idle'} className="w-full">
               <Sparkles className="w-4 h-4 mr-2" />
-              {generating ? 'A gerar...' : 'Gerar com IA'}
+              {generatingStage === 'text' ? 'A gerar texto...' : generatingStage === 'image' ? 'A gerar imagem...' : 'Gerar com IA'}
             </Button>
             {form.generated && (
               <>
@@ -230,6 +256,14 @@ export default function CalendarPage() {
                   <Label>Conteúdo</Label>
                   <Textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={5} />
                 </div>
+                {generatingStage === 'image' && (
+                  <div className="aspect-square w-full rounded-md bg-gray-100 animate-pulse" />
+                )}
+                {form.image_url && (
+                  <div className="relative aspect-square w-full overflow-hidden rounded-md border">
+                    <Image src={form.image_url} alt="Imagem gerada" fill className="object-cover" />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -255,6 +289,11 @@ export default function CalendarPage() {
                 {selected?.scheduled_at ? format(new Date(selected.scheduled_at), 'dd MMM yyyy', { locale: pt }) : ''}
               </span>
             </div>
+            {selected?.image_url && (
+              <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-md border">
+                <Image src={selected.image_url} alt={selected.title} fill className="object-cover" />
+              </div>
+            )}
             <p className="text-sm whitespace-pre-wrap">{selected?.body}</p>
             <div className="flex items-center gap-2">
               <Label className="text-xs">Estado:</Label>
