@@ -24,6 +24,7 @@ type Post = {
   status: 'draft' | 'scheduled' | 'published'
   created_at: string
   image_url?: string
+  carousel_urls?: string[]
 }
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok', 'twitter']
@@ -44,14 +45,18 @@ export default function CalendarPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [selected, setSelected] = useState<Post | null>(null)
   const [generatingStage, setGeneratingStage] = useState<'idle' | 'text' | 'image'>('idle')
+  const [previewSlide, setPreviewSlide] = useState(0)
+  const [viewSlide, setViewSlide] = useState(0)
   const [form, setForm] = useState({
     topic: '',
     platform: 'instagram',
     tone: '',
+    postType: 'single' as 'single' | 'carousel',
     scheduled_at: format(new Date(), 'yyyy-MM-dd'),
     title: '',
     body: '',
     image_url: '',
+    carousel_urls: [] as string[],
     generated: false,
   })
 
@@ -71,28 +76,62 @@ export default function CalendarPage() {
 
   async function handleGenerate() {
     if (!form.topic) return toast.error('Introduza um tema')
+    setPreviewSlide(0)
     try {
       const { data: config } = await supabase
         .from('config')
         .select('company_name, industry, target_audience, audience_detail, description, usp, tone_of_voice, location, primary_color')
         .single()
 
+      const brandContext = {
+        topic: form.topic,
+        platform: form.platform,
+        tone: form.tone || config?.tone_of_voice || '',
+        companyName: config?.company_name ?? 'Nossa empresa',
+        industry: config?.industry ?? '',
+        targetAudience: config?.target_audience ?? 'b2c',
+        audienceDetail: config?.audience_detail ?? '',
+        description: config?.description ?? '',
+        usp: config?.usp ?? '',
+        location: config?.location ?? '',
+      }
+
+      if (form.postType === 'carousel') {
+        setGeneratingStage('text')
+        const res = await fetch('/api/ai/carousel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(brandContext),
+        })
+        const result = await res.json()
+        setForm(f => ({ ...f, title: result.slides?.[0]?.heading ?? form.topic, body: result.caption, generated: true }))
+        toast.success('Texto gerado')
+
+        setGeneratingStage('image')
+        const imageRes = await fetch('/api/ai/carousel-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slides: result.slides,
+            primaryColor: config?.primary_color ?? '',
+            companyName: config?.company_name ?? 'Nossa empresa',
+          }),
+        })
+        const imageResult = await imageRes.json()
+        if (imageResult.carousel_urls) {
+          setForm(f => ({ ...f, carousel_urls: imageResult.carousel_urls }))
+          toast.success('Carrossel gerado')
+        } else {
+          toast.error('Erro ao gerar carrossel')
+        }
+        return
+      }
+
       setGeneratingStage('text')
       const res = await fetch('/api/ai/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: form.topic,
-          platform: form.platform,
-          tone: form.tone || config?.tone_of_voice || '',
-          companyName: config?.company_name ?? 'Nossa empresa',
-          industry: config?.industry ?? '',
-          targetAudience: config?.target_audience ?? 'b2c',
-          audienceDetail: config?.audience_detail ?? '',
-          description: config?.description ?? '',
-          usp: config?.usp ?? '',
-          location: config?.location ?? '',
-        }),
+        body: JSON.stringify(brandContext),
       })
       const result = await res.json()
       setForm(f => ({ ...f, title: result.title, body: result.body, generated: true }))
@@ -135,12 +174,13 @@ export default function CalendarPage() {
       scheduled_at: new Date(form.scheduled_at).toISOString(),
       status: 'draft',
       image_url: form.image_url || null,
+      carousel_urls: form.carousel_urls.length ? form.carousel_urls : null,
     })
 
     if (error) { toast.error('Erro ao guardar'); return }
     toast.success('Post adicionado ao calendário')
     setOpen(false)
-    setForm({ topic: '', platform: 'instagram', tone: '', scheduled_at: format(new Date(), 'yyyy-MM-dd'), title: '', body: '', image_url: '', generated: false })
+    setForm({ topic: '', platform: 'instagram', tone: '', postType: 'single', scheduled_at: format(new Date(), 'yyyy-MM-dd'), title: '', body: '', image_url: '', carousel_urls: [], generated: false })
     load()
   }
 
@@ -166,9 +206,10 @@ export default function CalendarPage() {
     const blob = await res.blob()
     const blobUrl = URL.createObjectURL(blob)
     const slug = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const ext = url.split('.').pop()?.split(/[?#]/)[0] || 'jpg'
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = `${slug || 'post'}.jpg`
+    a.download = `${slug || 'post'}.${ext}`
     a.click()
     URL.revokeObjectURL(blobUrl)
   }
@@ -216,7 +257,7 @@ export default function CalendarPage() {
                   {dayPosts.map(p => (
                     <button
                       key={p.id}
-                      onClick={() => { setSelected(p); setEditOpen(true) }}
+                      onClick={() => { setSelected(p); setViewSlide(0); setEditOpen(true) }}
                       className={`w-full text-left px-1.5 py-0.5 rounded text-xs truncate ${platformColors[p.platform?.[0]] ?? 'bg-gray-100 text-gray-700'}`}
                     >
                       {p.title}
@@ -252,6 +293,16 @@ export default function CalendarPage() {
               </div>
             </div>
             <div className="space-y-1.5">
+              <Label>Tipo de post</Label>
+              <Select value={form.postType} onValueChange={v => setForm(f => ({ ...f, postType: (v as 'single' | 'carousel') ?? 'single' }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Imagem única</SelectItem>
+                  <SelectItem value="carousel">Carrossel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
               <Label>Tema / assunto</Label>
               <Input value={form.topic} onChange={e => setForm(f => ({ ...f, topic: e.target.value }))} placeholder="ex: Promoção de verão, Novo produto..." />
             </div>
@@ -276,9 +327,25 @@ export default function CalendarPage() {
                 {generatingStage === 'image' && (
                   <div className="aspect-square w-full rounded-md bg-gray-100 animate-pulse" />
                 )}
-                {form.image_url && (
+                {form.postType === 'single' && form.image_url && (
                   <div className="relative aspect-square w-full overflow-hidden rounded-md border">
                     <Image src={form.image_url} alt="Imagem gerada" fill className="object-cover" />
+                  </div>
+                )}
+                {form.postType === 'carousel' && form.carousel_urls.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="relative aspect-square w-full overflow-hidden rounded-md border">
+                      <Image src={form.carousel_urls[previewSlide]} alt={`Slide ${previewSlide + 1}`} fill className="object-cover" />
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
+                      <Button variant="outline" size="sm" disabled={previewSlide === 0} onClick={() => setPreviewSlide(i => i - 1)}>
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <span className="text-xs text-muted-foreground">{previewSlide + 1}/{form.carousel_urls.length}</span>
+                      <Button variant="outline" size="sm" disabled={previewSlide === form.carousel_urls.length - 1} onClick={() => setPreviewSlide(i => i + 1)}>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </>
@@ -311,6 +378,22 @@ export default function CalendarPage() {
                 <Image src={selected.image_url} alt={selected.title} fill className="object-cover" />
               </div>
             )}
+            {selected?.carousel_urls && selected.carousel_urls.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-md border">
+                  <Image src={selected.carousel_urls[viewSlide]} alt={`Slide ${viewSlide + 1}`} fill className="object-cover" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" disabled={viewSlide === 0} onClick={() => setViewSlide(i => i - 1)}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground">{viewSlide + 1}/{selected.carousel_urls.length}</span>
+                  <Button variant="outline" size="sm" disabled={viewSlide === selected.carousel_urls.length - 1} onClick={() => setViewSlide(i => i + 1)}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
             <p className="text-sm whitespace-pre-wrap">{selected?.body}</p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => selected && handleCopyText(selected.body)}>
@@ -319,6 +402,11 @@ export default function CalendarPage() {
               {selected?.image_url && (
                 <Button variant="outline" size="sm" onClick={() => handleDownloadImage(selected.image_url!, selected.title)}>
                   <Download className="w-3.5 h-3.5 mr-1" />Descarregar imagem
+                </Button>
+              )}
+              {selected?.carousel_urls && selected.carousel_urls.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => handleDownloadImage(selected.carousel_urls![viewSlide], `${selected.title}-slide-${viewSlide + 1}`)}>
+                  <Download className="w-3.5 h-3.5 mr-1" />Descarregar slide
                 </Button>
               )}
             </div>
