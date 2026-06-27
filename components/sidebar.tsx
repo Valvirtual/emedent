@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, Calendar, Users, FileText, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Calendar, Users, FileText, Settings, LogOut, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/inbox', label: 'Conversas', icon: MessageCircle },
   { href: '/dashboard/calendar', label: 'Calendário', icon: Calendar },
   { href: '/dashboard/crm', label: 'CRM', icon: Users },
   { href: '/dashboard/quotes', label: 'Orçamentos', icon: FileText },
