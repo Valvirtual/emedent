@@ -128,4 +128,40 @@ async function handleInboundMessage(
     status: 'received',
     raw_payload: msg,
   })
+
+  if (msg.text?.body && patient?.id) {
+    await handleReminderReply(supabase, patient.id, msg.text.body)
+  }
+}
+
+const CONFIRM_WORDS = ['sim', 's', 'yes', 'y', 'sí', 'si']
+const CANCEL_WORDS = ['não', 'nao', 'n', 'no']
+
+async function handleReminderReply(
+  supabase: ReturnType<typeof createAdminClient>,
+  patientId: string,
+  text: string
+) {
+  const normalized = text.trim().toLowerCase()
+  const isConfirm = CONFIRM_WORDS.includes(normalized)
+  const isCancel = CANCEL_WORDS.includes(normalized)
+  if (!isConfirm && !isCancel) return
+
+  // só age sobre a próxima consulta pendente que já recebeu lembrete (reminder_sent_at preenchido)
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('patient_id', patientId)
+    .in('status', ['scheduled', 'confirmed'])
+    .not('reminder_sent_at', 'is', null)
+    .order('scheduled_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (!appointment) return
+
+  await supabase
+    .from('appointments')
+    .update({ status: isConfirm ? 'confirmed' : 'cancelled' })
+    .eq('id', appointment.id)
 }
