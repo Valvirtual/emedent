@@ -10,6 +10,7 @@ import Image from 'next/image'
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/inbox', label: 'Conversas', icon: MessageCircle },
+  { href: '/dashboard/patients', label: 'Pacientes', icon: Users },
   { href: '/dashboard/calendar', label: 'Calendário', icon: Calendar },
   { href: '/dashboard/crm', label: 'CRM', icon: Users },
   { href: '/dashboard/quotes', label: 'Orçamentos', icon: FileText },
