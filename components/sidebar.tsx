@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { LayoutDashboard, Calendar, Users, FileText, Settings, LogOut, MessageCircle, CalendarClock, Stethoscope } from 'lucide-react'
+import { LayoutDashboard, Users, Settings, LogOut, MessageCircle, CalendarClock, Stethoscope } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
@@ -13,9 +13,6 @@ const nav = [
   { href: '/dashboard/patients', label: 'Pacientes', icon: Users },
   { href: '/dashboard/appointments', label: 'Agenda', icon: CalendarClock },
   { href: '/dashboard/professionals', label: 'Profissionais', icon: Stethoscope },
-  { href: '/dashboard/calendar', label: 'Calendário', icon: Calendar },
-  { href: '/dashboard/crm', label: 'CRM', icon: Users },
-  { href: '/dashboard/quotes', label: 'Orçamentos', icon: FileText },
   { href: '/dashboard/brand', label: 'Marca', icon: Settings },
 ]
 
