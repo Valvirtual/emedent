@@ -16,9 +16,12 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
 
+  // Cron corre 1x/dia (limite do plano Hobby da Vercel), por isso a janela cobre
+  // as próximas 24-48h inteiras para apanhar todas as consultas do dia seguinte
+  // numa única execução, em vez de uma janela estreita pensada para cron horário.
   const now = new Date()
-  const windowStart = new Date(now.getTime() + 23 * 60 * 60 * 1000).toISOString()
-  const windowEnd = new Date(now.getTime() + 25 * 60 * 60 * 1000).toISOString()
+  const windowStart = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString()
+  const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString()
 
   const { data: appointments } = await supabase
     .from('appointments')
