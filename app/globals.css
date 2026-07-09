@@ -49,38 +49,38 @@
 }
 
 :root {
-  /* Dark theme — ValVirtual style */
-  --background: #0f1623;
-  --foreground: #f0f4ff;
-  --card: #151d2e;
-  --card-foreground: #f0f4ff;
-  --popover: #151d2e;
-  --popover-foreground: #f0f4ff;
-  --primary: #00c8ff;
-  --primary-foreground: #0a0e1a;
-  --secondary: #1a2338;
-  --secondary-foreground: #a0b0cc;
-  --muted: #1a2338;
-  --muted-foreground: #6b7fa3;
-  --accent: #00c8ff;
-  --accent-foreground: #0a0e1a;
+  /* Light theme — Emedent */
+  --background: #ffffff;
+  --foreground: #1a1d29;
+  --card: #ffffff;
+  --card-foreground: #1a1d29;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d29;
+  --primary: #8b2942;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #4b5165;
+  --muted: #f4f5f7;
+  --muted-foreground: #6b7280;
+  --accent: #f4f5f7;
+  --accent-foreground: #1a1d29;
   --destructive: #ef4444;
-  --border: #1e2d45;
-  --input: #1a2338;
-  --ring: #00c8ff;
+  --border: #e5e7eb;
+  --input: #ffffff;
+  --ring: #8b2942;
   --radius: 0.75rem;
-  --sidebar: #0a0e1a;
-  --sidebar-foreground: #f0f4ff;
-  --sidebar-primary: #00c8ff;
-  --sidebar-primary-foreground: #0a0e1a;
-  --sidebar-accent: #151d2e;
-  --sidebar-accent-foreground: #f0f4ff;
-  --sidebar-border: #1e2d45;
-  --sidebar-ring: #00c8ff;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #1a1d29;
+  --sidebar-primary: #8b2942;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f5f7;
+  --sidebar-accent-foreground: #1a1d29;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #8b2942;
 }
 
 .dark {
-  /* Same as :root — always dark */
+  /* Same as :root — always light */
 }
 
 @layer base {

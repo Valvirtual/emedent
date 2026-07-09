@@ -17,8 +17,13 @@ export default async function DashboardLayout({
     .select('company_name, logo_url, primary_color')
     .single()
 
+  const primaryColor = config?.primary_color || '#8B2942'
+
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div
+      className="flex h-screen overflow-hidden"
+      style={{ '--primary': primaryColor, '--primary-foreground': '#ffffff' } as React.CSSProperties}
+    >
       <Sidebar companyName={config?.company_name ?? 'pymetool'} logoUrl={config?.logo_url} />
       <main className="flex-1 overflow-auto bg-background p-8">
         {children}

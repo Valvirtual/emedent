@@ -26,7 +26,7 @@ export default function BrandPage() {
   const [config, setConfig] = useState({
     company_name: '',
     logo_url: '',
-    primary_color: '#6366f1',
+    primary_color: '#8B2942',
     industry: '',
     target_audience: 'b2c',
     audience_detail: '',
@@ -48,9 +48,9 @@ export default function BrandPage() {
 
     setLoading(true)
     const ext = file.name.split('.').pop()
-    const path = `logo.${ext}`
+    const path = `logo-${Date.now()}.${ext}`
 
-    const { error } = await supabase.storage.from('brand').upload(path, file, { upsert: true })
+    const { error } = await supabase.storage.from('brand').upload(path, file)
     if (error) {
       toast.error('Erro ao fazer upload do logo')
       setLoading(false)
