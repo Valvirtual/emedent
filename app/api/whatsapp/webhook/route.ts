@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { verifyWebhookSignature, getMediaInfo, downloadMediaBuffer } from '@/lib/whatsapp'
+import { verifyWebhookSignature, getMediaInfo, downloadMediaBuffer, sendWhatsAppMessage } from '@/lib/whatsapp'
+import { generateAiReply } from '@/lib/ai-agent'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -80,7 +81,7 @@ async function handleInboundMessage(
 
   let { data: conversation } = await supabase
     .from('conversations')
-    .select('id')
+    .select('id, ai_enabled, status')
     .eq('wa_phone', waPhone)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -90,7 +91,7 @@ async function handleInboundMessage(
     const { data: created } = await supabase
       .from('conversations')
       .insert({ patient_id: patient?.id, wa_phone: waPhone })
-      .select('id')
+      .select('id, ai_enabled, status')
       .single()
     conversation = created
   } else {
@@ -129,8 +130,49 @@ async function handleInboundMessage(
     raw_payload: msg,
   })
 
-  if (msg.text?.body && patient?.id) {
-    await handleReminderReply(supabase, patient.id, msg.text.body)
+  if (!conversation?.id) return
+
+  if (contentType !== 'text') {
+    await supabase.from('conversations').update({ status: 'needs_human' }).eq('id', conversation.id)
+    return
+  }
+
+  if (!msg.text?.body) return
+
+  const handledByReminderFlow = patient?.id
+    ? await handleReminderReply(supabase, patient.id, msg.text.body)
+    : false
+
+  if (handledByReminderFlow) return
+  if (!conversation.ai_enabled || conversation.status === 'needs_human') return
+
+  try {
+    const ai = await generateAiReply(supabase, conversation.id, patient?.id ?? null)
+    const result = await sendWhatsAppMessage(waPhone, ai.reply)
+    const waMessageId = result.messages?.[0]?.id ?? null
+
+    await supabase.from('messages').insert({
+      conversation_id: conversation.id,
+      direction: 'outbound',
+      sender: 'ai',
+      wa_message_id: waMessageId,
+      content_type: 'text',
+      content: ai.reply,
+      intent: ai.intent,
+      status: 'sent',
+    })
+
+    await supabase
+      .from('conversations')
+      .update({
+        status: ai.needs_human ? 'needs_human' : 'open',
+        priority: ai.priority,
+        last_message_at: new Date().toISOString(),
+      })
+      .eq('id', conversation.id)
+  } catch (err) {
+    console.error('Falha ao gerar/enviar resposta da IA:', err)
+    await supabase.from('conversations').update({ status: 'needs_human' }).eq('id', conversation.id)
   }
 }
 
@@ -141,11 +183,11 @@ async function handleReminderReply(
   supabase: ReturnType<typeof createAdminClient>,
   patientId: string,
   text: string
-) {
+): Promise<boolean> {
   const normalized = text.trim().toLowerCase()
   const isConfirm = CONFIRM_WORDS.includes(normalized)
   const isCancel = CANCEL_WORDS.includes(normalized)
-  if (!isConfirm && !isCancel) return
+  if (!isConfirm && !isCancel) return false
 
   // só age sobre a próxima consulta pendente que já recebeu lembrete (reminder_sent_at preenchido)
   const { data: appointment } = await supabase
@@ -158,10 +200,12 @@ async function handleReminderReply(
     .limit(1)
     .maybeSingle()
 
-  if (!appointment) return
+  if (!appointment) return false
 
   await supabase
     .from('appointments')
     .update({ status: isConfirm ? 'confirmed' : 'cancelled' })
     .eq('id', appointment.id)
+
+  return true
 }
