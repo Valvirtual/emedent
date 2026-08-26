@@ -6,7 +6,7 @@ import { format } from 'date-fns'
 // Templates de lembrete precisam ser pré-aprovados pelo Meta, um por idioma (mesmo nome,
 // language code diferente). Ajustar os codes abaixo conforme o que for submetido no Meta Business Manager.
 const TEMPLATE_NAME = 'lembrete_consulta'
-const LANGUAGE_CODES: Record<string, string> = { pt: 'pt_PT', en: 'en_US', es: 'es_ES' }
+const LANGUAGE_CODES: Record<string, string> = { pt: 'pt_BR', en: 'en_US', es: 'es_ES' }
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')

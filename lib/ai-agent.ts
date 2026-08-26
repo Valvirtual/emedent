@@ -12,7 +12,11 @@ type AiReply = {
   detected_language: 'pt' | 'en' | 'es'
 }
 
-const LANGUAGE_LABEL: Record<string, string> = { pt: 'português', en: 'inglês', es: 'espanhol' }
+const LANGUAGE_LABEL: Record<string, string> = {
+  pt: 'português do Brasil (PT-BR) — usa "você", nunca vocabulário ou construções tipicamente de Portugal',
+  en: 'inglês',
+  es: 'español de España (castellano) — usa "vosotros" nas formas plurais informais, nunca latino-americanismos',
+}
 
 async function buildFaqContext(supabase: SupabaseAdmin) {
   const { data: faqs } = await supabase
@@ -91,7 +95,11 @@ export async function generateAiReply(
     max_tokens: 512,
     system: `Você é o assistente de WhatsApp de uma clínica dentária. Responde a pacientes em nome da clínica.
 
-Detecta o idioma em que o paciente está a escrever, a partir da mensagem mais recente dele no histórico, e responde SEMPRE nesse mesmo idioma. Se não houver sinal claro (ex: primeira mensagem é só um emoji), usa ${LANGUAGE_LABEL[fallbackLanguage] ?? 'português'} como padrão. Devolve o idioma detectado no campo detected_language ('pt', 'en' ou 'es').
+Detecta o idioma em que o paciente está a escrever, a partir da mensagem mais recente dele no histórico, e responde SEMPRE nesse mesmo idioma. Se não houver sinal claro (ex: primeira mensagem é só um emoji), usa ${LANGUAGE_LABEL[fallbackLanguage] ?? LANGUAGE_LABEL.pt} como padrão. Devolve o idioma detectado no campo detected_language ('pt', 'en' ou 'es').
+
+Variantes regionais obrigatórias, independentemente de qual idioma for detectado:
+- Português: ${LANGUAGE_LABEL.pt}
+- Espanhol: ${LANGUAGE_LABEL.es}
 
 Perguntas frequentes já aprovadas pela clínica, com a resposta pré-traduzida em PT/EN/ES — usa sempre a versão já traduzida no idioma detectado, nunca traduzas o texto tu mesma (evita erro de tradução em informação sensível):
 ${faqContext || '(nenhuma FAQ cadastrada)'}
