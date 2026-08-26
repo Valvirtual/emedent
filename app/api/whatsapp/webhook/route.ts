@@ -81,7 +81,7 @@ async function handleInboundMessage(
 
   let { data: conversation } = await supabase
     .from('conversations')
-    .select('id, ai_enabled, status')
+    .select('id, ai_enabled, status, last_message_at')
     .eq('wa_phone', waPhone)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -91,11 +91,23 @@ async function handleInboundMessage(
     const { data: created } = await supabase
       .from('conversations')
       .insert({ patient_id: patient?.id, wa_phone: waPhone })
-      .select('id, ai_enabled, status')
+      .select('id, ai_enabled, status, last_message_at')
       .single()
     conversation = created
   } else {
-    await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversation.id)
+    const hoursSinceLastMessage = conversation.last_message_at
+      ? (Date.now() - new Date(conversation.last_message_at).getTime()) / 3_600_000
+      : 0
+
+    // conversa parada há mais de 24h é tratada como um novo contacto: sai do needs_human sozinha
+    if (conversation.status === 'needs_human' && hoursSinceLastMessage > 24) {
+      conversation.status = 'open'
+    }
+
+    await supabase
+      .from('conversations')
+      .update({ status: conversation.status, last_message_at: new Date().toISOString() })
+      .eq('id', conversation.id)
   }
 
   const mediaField = msg.image ?? msg.audio ?? msg.document

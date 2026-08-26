@@ -83,7 +83,15 @@ export default function InboxPage() {
   }, [selectedId])
 
   async function toggleAi(conv: Conversation) {
-    await supabase.from('conversations').update({ ai_enabled: !conv.ai_enabled }).eq('id', conv.id)
+    const turningOn = !conv.ai_enabled
+    await supabase
+      .from('conversations')
+      .update({
+        ai_enabled: turningOn,
+        // reativar a IA manualmente também tira a conversa de needs_human, senão fica presa
+        status: turningOn && conv.status === 'needs_human' ? 'open' : conv.status,
+      })
+      .eq('id', conv.id)
     loadConversations()
   }
 
