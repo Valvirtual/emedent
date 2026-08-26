@@ -9,28 +9,26 @@ type AiReply = {
   intent: string
   needs_human: boolean
   priority: 'normal' | 'urgent'
+  detected_language: 'pt' | 'en' | 'es'
 }
 
 const LANGUAGE_LABEL: Record<string, string> = { pt: 'português', en: 'inglês', es: 'espanhol' }
-const FAQ_ANSWER_FIELD: Record<string, 'answer_pt' | 'answer_en' | 'answer_es'> = {
-  pt: 'answer_pt',
-  en: 'answer_en',
-  es: 'answer_es',
-}
 
-async function buildFaqContext(supabase: SupabaseAdmin, language: string) {
+async function buildFaqContext(supabase: SupabaseAdmin) {
   const { data: faqs } = await supabase
     .from('faqs')
     .select('question, category, answer_pt, answer_en, answer_es')
     .eq('active', true)
 
-  const answerField = FAQ_ANSWER_FIELD[language] ?? 'answer_pt'
-
   return (faqs ?? [])
     .map(faq => {
-      const answer = (faq as Record<string, string | null>)[answerField] ?? faq.answer_pt
-      if (!answer) return null
-      return `- [${faq.category ?? 'geral'}] P: ${faq.question}\n  R: ${answer}`
+      const variants = [
+        faq.answer_pt ? `PT: ${faq.answer_pt}` : null,
+        faq.answer_en ? `EN: ${faq.answer_en}` : null,
+        faq.answer_es ? `ES: ${faq.answer_es}` : null,
+      ].filter(Boolean).join(' | ')
+      if (!variants) return null
+      return `- [${faq.category ?? 'geral'}] P: ${faq.question}\n  ${variants}`
     })
     .filter(Boolean)
     .join('\n')
@@ -80,10 +78,10 @@ export async function generateAiReply(
     ? await supabase.from('patients').select('name, preferred_language').eq('id', patientId).maybeSingle()
     : { data: null }
 
-  const language = patient?.preferred_language ?? 'pt'
+  const fallbackLanguage = patient?.preferred_language ?? 'pt'
 
   const [faqContext, hoursContext, historyContext] = await Promise.all([
-    buildFaqContext(supabase, language),
+    buildFaqContext(supabase),
     buildHoursContext(supabase),
     buildHistoryMessages(supabase, conversationId),
   ])
@@ -93,9 +91,9 @@ export async function generateAiReply(
     max_tokens: 512,
     system: `Você é o assistente de WhatsApp de uma clínica dentária. Responde a pacientes em nome da clínica.
 
-Responde sempre em ${LANGUAGE_LABEL[language] ?? 'português'} (idioma preferido deste paciente).
+Detecta o idioma em que o paciente está a escrever, a partir da mensagem mais recente dele no histórico, e responde SEMPRE nesse mesmo idioma. Se não houver sinal claro (ex: primeira mensagem é só um emoji), usa ${LANGUAGE_LABEL[fallbackLanguage] ?? 'português'} como padrão. Devolve o idioma detectado no campo detected_language ('pt', 'en' ou 'es').
 
-Perguntas frequentes já aprovadas pela clínica (usa a resposta tal como está, sem parafrasear valores ou condições):
+Perguntas frequentes já aprovadas pela clínica, com a resposta pré-traduzida em PT/EN/ES — usa sempre a versão já traduzida no idioma detectado, nunca traduzas o texto tu mesma (evita erro de tradução em informação sensível):
 ${faqContext || '(nenhuma FAQ cadastrada)'}
 
 Horários de disponibilidade por profissional:
@@ -121,8 +119,9 @@ Fora dessas situações, responde diretamente e de forma curta (estilo WhatsApp,
           intent: { type: 'string', description: 'Classificação curta da intenção da mensagem, ex: duvida_horario, preco, sintoma, agendamento, saudacao' },
           needs_human: { type: 'boolean', description: 'Se a conversa deve ser escalada para um humano' },
           priority: { type: 'string', enum: ['normal', 'urgent'], description: 'Prioridade da conversa' },
+          detected_language: { type: 'string', enum: ['pt', 'en', 'es'], description: 'Idioma detectado na mensagem do paciente' },
         },
-        required: ['reply', 'intent', 'needs_human', 'priority'],
+        required: ['reply', 'intent', 'needs_human', 'priority', 'detected_language'],
       },
     }],
     messages: [{

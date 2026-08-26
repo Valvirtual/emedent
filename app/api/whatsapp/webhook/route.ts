@@ -182,6 +182,10 @@ async function handleInboundMessage(
         last_message_at: new Date().toISOString(),
       })
       .eq('id', conversation.id)
+
+    if (patient?.id) {
+      await supabase.from('patients').update({ preferred_language: ai.detected_language }).eq('id', patient.id)
+    }
   } catch (err) {
     console.error('Falha ao gerar/enviar resposta da IA:', err)
     await supabase.from('conversations').update({ status: 'needs_human' }).eq('id', conversation.id)
