@@ -15,7 +15,7 @@ type AiReply = {
 const LANGUAGE_LABEL: Record<string, string> = {
   pt: 'português do Brasil (PT-BR) — usa "você", nunca vocabulário ou construções tipicamente de Portugal',
   en: 'inglês',
-  es: 'español de España (castellano) — usa "vosotros" nas formas plurais informais, nunca latino-americanismos',
+  es: 'español de España (castellano) — a conversa é sempre com UM único paciente, então usa "tú" (singular informal), nunca "vosotros" (é plural, só para grupos) nem latino-americanismos',
 }
 
 async function buildFaqContext(supabase: SupabaseAdmin) {
