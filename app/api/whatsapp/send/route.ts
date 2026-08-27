@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId)
+  // a equipa respondeu manualmente, então a conversa deixa de precisar de humano
+  await supabase
+    .from('conversations')
+    .update({ last_message_at: new Date().toISOString(), status: 'open', needs_human_since: null })
+    .eq('id', conversationId)
 
   return NextResponse.json({ ok: true })
 }

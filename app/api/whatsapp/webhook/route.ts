@@ -81,7 +81,7 @@ async function handleInboundMessage(
 
   let { data: conversation } = await supabase
     .from('conversations')
-    .select('id, ai_enabled, status, last_message_at')
+    .select('id, ai_enabled, status, needs_human_since')
     .eq('wa_phone', waPhone)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -91,22 +91,25 @@ async function handleInboundMessage(
     const { data: created } = await supabase
       .from('conversations')
       .insert({ patient_id: patient?.id, wa_phone: waPhone })
-      .select('id, ai_enabled, status, last_message_at')
+      .select('id, ai_enabled, status, needs_human_since')
       .single()
     conversation = created
   } else {
-    const hoursSinceLastMessage = conversation.last_message_at
-      ? (Date.now() - new Date(conversation.last_message_at).getTime()) / 3_600_000
+    const hoursSinceEscalated = conversation.needs_human_since
+      ? (Date.now() - new Date(conversation.needs_human_since).getTime()) / 3_600_000
       : 0
 
-    // conversa parada há mais de 24h é tratada como um novo contacto: sai do needs_human sozinha
-    if (conversation.status === 'needs_human' && hoursSinceLastMessage > 24) {
+    // conversa escalada há mais de 24h sem ninguém resolver é tratada como um novo
+    // contacto e sai do needs_human sozinha (needs_human_since não muda a cada mensagem,
+    // só quando entra/sai desse estado, ao contrário de last_message_at)
+    if (conversation.status === 'needs_human' && hoursSinceEscalated > 24) {
       conversation.status = 'open'
+      conversation.needs_human_since = null
     }
 
     await supabase
       .from('conversations')
-      .update({ status: conversation.status, last_message_at: new Date().toISOString() })
+      .update({ status: conversation.status, needs_human_since: conversation.needs_human_since, last_message_at: new Date().toISOString() })
       .eq('id', conversation.id)
   }
 
@@ -145,7 +148,9 @@ async function handleInboundMessage(
   if (!conversation?.id) return
 
   if (contentType !== 'text') {
-    await supabase.from('conversations').update({ status: 'needs_human' }).eq('id', conversation.id)
+    if (conversation.status !== 'needs_human') {
+      await supabase.from('conversations').update({ status: 'needs_human', needs_human_since: new Date().toISOString() }).eq('id', conversation.id)
+    }
     return
   }
 
@@ -178,6 +183,7 @@ async function handleInboundMessage(
       .from('conversations')
       .update({
         status: ai.needs_human ? 'needs_human' : 'open',
+        needs_human_since: ai.needs_human ? new Date().toISOString() : null,
         priority: ai.priority,
         last_message_at: new Date().toISOString(),
       })
@@ -188,7 +194,7 @@ async function handleInboundMessage(
     }
   } catch (err) {
     console.error('Falha ao gerar/enviar resposta da IA:', err)
-    await supabase.from('conversations').update({ status: 'needs_human' }).eq('id', conversation.id)
+    await supabase.from('conversations').update({ status: 'needs_human', needs_human_since: new Date().toISOString() }).eq('id', conversation.id)
   }
 }
 
