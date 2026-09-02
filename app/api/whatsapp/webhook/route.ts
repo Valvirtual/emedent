@@ -81,7 +81,7 @@ async function handleInboundMessage(
 
   let { data: conversation } = await supabase
     .from('conversations')
-    .select('id, ai_enabled, status, needs_human_since')
+    .select('id, ai_enabled, status, needs_human_since, last_message_at')
     .eq('wa_phone', waPhone)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -94,10 +94,17 @@ async function handleInboundMessage(
     const { data: created } = await supabase
       .from('conversations')
       .insert({ patient_id: patient?.id, wa_phone: waPhone })
-      .select('id, ai_enabled, status, needs_human_since')
+      .select('id, ai_enabled, status, needs_human_since, last_message_at')
       .single()
     conversation = created
   } else {
+    // sem atividade há mais de 24h: trata-se como um novo contacto, tanto para
+    // efeitos de needs_human como para a IA voltar a identificar-se (Art. 50 EU AI Act)
+    const hoursSinceLastMessage = conversation.last_message_at
+      ? (Date.now() - new Date(conversation.last_message_at).getTime()) / 3_600_000
+      : 0
+    if (hoursSinceLastMessage > 24) isNewConversation = true
+
     const hoursSinceEscalated = conversation.needs_human_since
       ? (Date.now() - new Date(conversation.needs_human_since).getTime()) / 3_600_000
       : 0
