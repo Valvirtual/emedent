@@ -87,7 +87,10 @@ async function handleInboundMessage(
     .limit(1)
     .maybeSingle()
 
+  let isNewConversation = false
+
   if (!conversation) {
+    isNewConversation = true
     const { data: created } = await supabase
       .from('conversations')
       .insert({ patient_id: patient?.id, wa_phone: waPhone })
@@ -164,7 +167,7 @@ async function handleInboundMessage(
   if (!conversation.ai_enabled || conversation.status === 'needs_human') return
 
   try {
-    const ai = await generateAiReply(supabase, conversation.id, patient?.id ?? null)
+    const ai = await generateAiReply(supabase, conversation.id, patient?.id ?? null, isNewConversation)
     const result = await sendWhatsAppMessage(waPhone, ai.reply)
     const waMessageId = result.messages?.[0]?.id ?? null
 
