@@ -59,22 +59,13 @@ async function buildHoursContext(supabase: SupabaseAdmin) {
     .join('\n')
 }
 
-async function buildHistoryMessages(supabase: SupabaseAdmin, conversationId: string, isNewConversation: boolean) {
-  let query = supabase
+async function buildHistoryMessages(supabase: SupabaseAdmin, conversationId: string) {
+  const { data: history } = await supabase
     .from('messages')
-    .select('direction, sender, content, content_type, created_at')
+    .select('direction, sender, content, content_type')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
     .limit(20)
-
-  // numa "nova sessão" (Art. 50), não mostramos ao modelo o histórico de dias/semanas
-  // atrás — isso contradiz visualmente a instrução "esta é a primeira mensagem" e o
-  // modelo tende a confiar no que vê (histórico) mais do que na instrução abstrata
-  if (isNewConversation) {
-    query = query.gte('created_at', new Date(Date.now() - 60 * 60_000).toISOString())
-  }
-
-  const { data: history } = await query
 
   return (history ?? [])
     .filter(m => m.content_type === 'text' && m.content)
@@ -86,7 +77,8 @@ export async function generateAiReply(
   supabase: SupabaseAdmin,
   conversationId: string,
   patientId: string | null,
-  isNewConversation: boolean
+  isNewConversation: boolean,
+  currentMessageText: string
 ): Promise<AiReply> {
   const { data: patient } = patientId
     ? await supabase.from('patients').select('name, preferred_language').eq('id', patientId).maybeSingle()
@@ -94,10 +86,14 @@ export async function generateAiReply(
 
   const fallbackLanguage = patient?.preferred_language ?? 'pt'
 
+  // numa "nova sessão" (Art. 50) não mostramos ao modelo NENHUM histórico anterior —
+  // mesmo uma mensagem de minutos atrás contradiz visualmente "esta é a primeira
+  // mensagem", e o modelo confia mais no que vê do que numa instrução abstrata.
+  // A mensagem atual do paciente é passada à parte, nunca depende do histórico.
   const [faqContext, hoursContext, historyContext, config] = await Promise.all([
     buildFaqContext(supabase),
     buildHoursContext(supabase),
-    buildHistoryMessages(supabase, conversationId, isNewConversation),
+    isNewConversation ? Promise.resolve('') : buildHistoryMessages(supabase, conversationId),
     supabase.from('config').select('company_name, assistant_name').maybeSingle().then(r => r.data),
   ])
 
@@ -173,7 +169,9 @@ Fora dessas situações, responde diretamente e de forma curta (estilo WhatsApp,
     }],
     messages: [{
       role: 'user',
-      content: `Histórico recente da conversa:\n${historyContext}\n\nResponde à última mensagem do paciente.`,
+      content: isNewConversation
+        ? `Mensagem do paciente (primeira desta conversa): ${currentMessageText}\n\nResponde a esta mensagem.`
+        : `Histórico recente da conversa:\n${historyContext}\n\nMensagem mais recente do paciente: ${currentMessageText}\n\nResponde a esta mensagem.`,
     }],
   })
 

@@ -175,7 +175,7 @@ async function handleInboundMessage(
   if (!conversation.ai_enabled || conversation.status === 'needs_human') return
 
   try {
-    const ai = await generateAiReply(supabase, conversation.id, patient?.id ?? null, isNewConversation)
+    const ai = await generateAiReply(supabase, conversation.id, patient?.id ?? null, isNewConversation, msg.text.body)
     const result = await sendWhatsAppMessage(waPhone, ai.reply)
     const waMessageId = result.messages?.[0]?.id ?? null
 
