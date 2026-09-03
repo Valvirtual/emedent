@@ -25,6 +25,7 @@ export default function BrandPage() {
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState({
     company_name: '',
+    assistant_name: '',
     logo_url: '',
     primary_color: '#8B2942',
     industry: '',
@@ -132,6 +133,17 @@ export default function BrandPage() {
               value={config.company_name}
               onChange={e => setConfig(c => ({ ...c, company_name: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="assistant_name">Nome do assistente de IA</Label>
+            <Input
+              id="assistant_name"
+              placeholder="ex: Tati"
+              value={config.assistant_name}
+              onChange={e => setConfig(c => ({ ...c, assistant_name: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">Usado na frase de apresentação obrigatória no início de cada conversa nova ("Olá! Sou {'{nome}'}, assistente virtual com IA de {'{empresa}'}...")</p>
           </div>
 
           <div className="space-y-2">

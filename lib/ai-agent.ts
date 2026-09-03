@@ -89,18 +89,36 @@ export async function generateAiReply(
     buildFaqContext(supabase),
     buildHoursContext(supabase),
     buildHistoryMessages(supabase, conversationId),
-    supabase.from('config').select('company_name').maybeSingle().then(r => r.data),
+    supabase.from('config').select('company_name, assistant_name').maybeSingle().then(r => r.data),
   ])
 
   const clinicName = config?.company_name ?? 'a clínica'
+  const assistantName = config?.assistant_name?.trim() || null
+
+  const disclosureTemplates = assistantName
+    ? {
+        pt: `Olá! Sou ${assistantName}, assistente virtual com IA de ${clinicName}.`,
+        es: `¡Hola! Soy ${assistantName}, asistente virtual con IA de ${clinicName}.`,
+        en: `Hi! I'm ${assistantName}, a virtual AI assistant for ${clinicName}.`,
+      }
+    : {
+        pt: `Olá! Sou o assistente virtual com IA de ${clinicName}.`,
+        es: `¡Hola! Soy el asistente virtual con IA de ${clinicName}.`,
+        en: `Hi! I'm the virtual AI assistant for ${clinicName}.`,
+      }
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
-    system: `Você é o assistente de WhatsApp de ${clinicName}. Responde a pacientes em nome da clínica.
+    system: `Você é${assistantName ? ` ${assistantName},` : ''} o assistente de WhatsApp de ${clinicName}. Responde a pacientes em nome da clínica.
 
 ${isNewConversation
-  ? `Esta é a PRIMEIRA mensagem desta conversa. Por obrigação legal (Art. 50 do EU AI Act, transparência de sistemas de IA), a reply tem de começar por te identificares claramente como assistente de IA de ${clinicName}, mantendo um tom próximo e natural — não é um aviso legal seco, é uma apresentação breve. Depois disso, responde normalmente à mensagem do paciente. Exemplo de tom (adapta ao idioma detectado, não traduzas literalmente): "Olá! Sou o assistente virtual de ${clinicName}, estou aqui para ajudar com a tua consulta. Em que posso ajudar?"`
+  ? `Esta é a PRIMEIRA mensagem desta conversa. Por obrigação legal (Art. 50 do EU AI Act, transparência de sistemas de IA), a reply tem de começar EXATAMENTE por uma destas frases de identificação, conforme o idioma detectado (nunca omitir "IA" ou equivalente — não basta dizer "assistente virtual", tem de ficar claro que é IA; usa a frase tal como está, não a reescrevas):
+- PT: "${disclosureTemplates.pt}"
+- ES: "${disclosureTemplates.es}"
+- EN: "${disclosureTemplates.en}"
+
+A seguir a essa frase (mesma mensagem): se o paciente já fez uma pergunta específica, responde-a diretamente; se foi só uma saudação sem pergunta, pergunta "Em que posso ajudar?" (traduzido).`
   : `Esta NÃO é a primeira mensagem da conversa — já te identificaste como IA antes. NÃO repitas essa identificação, responde diretamente.`}
 
 Tom: cordial e próximo, mas sóbrio — como uma rececionista atenciosa, não como uma promoção. Nunca uses emojis (nenhum, em nenhuma resposta). Evita pontos de exclamação e entusiasmo exagerado; frases diretas e calmas transmitem mais confiança numa clínica do que efusividade.
