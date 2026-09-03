@@ -98,12 +98,13 @@ async function handleInboundMessage(
       .single()
     conversation = created
   } else {
-    // sem atividade há mais de 24h: trata-se como um novo contacto, tanto para
-    // efeitos de needs_human como para a IA voltar a identificar-se (Art. 50 EU AI Act)
+    // sem atividade há mais de 12h: a IA volta a identificar-se (Art. 50 EU AI Act)
+    // como se fosse um novo contacto (janela mais curta que a do needs_human abaixo,
+    // porque aqui é só sobre reapresentar-se, não sobre reter escalonamento)
     const hoursSinceLastMessage = conversation.last_message_at
       ? (Date.now() - new Date(conversation.last_message_at).getTime()) / 3_600_000
       : 0
-    if (hoursSinceLastMessage > 24) isNewConversation = true
+    if (hoursSinceLastMessage > 12) isNewConversation = true
 
     const hoursSinceEscalated = conversation.needs_human_since
       ? (Date.now() - new Date(conversation.needs_human_since).getTime()) / 3_600_000
