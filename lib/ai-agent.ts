@@ -59,13 +59,22 @@ async function buildHoursContext(supabase: SupabaseAdmin) {
     .join('\n')
 }
 
-async function buildHistoryMessages(supabase: SupabaseAdmin, conversationId: string) {
-  const { data: history } = await supabase
+async function buildHistoryMessages(supabase: SupabaseAdmin, conversationId: string, isNewConversation: boolean) {
+  let query = supabase
     .from('messages')
-    .select('direction, sender, content, content_type')
+    .select('direction, sender, content, content_type, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
     .limit(20)
+
+  // numa "nova sessão" (Art. 50), não mostramos ao modelo o histórico de dias/semanas
+  // atrás — isso contradiz visualmente a instrução "esta é a primeira mensagem" e o
+  // modelo tende a confiar no que vê (histórico) mais do que na instrução abstrata
+  if (isNewConversation) {
+    query = query.gte('created_at', new Date(Date.now() - 60 * 60_000).toISOString())
+  }
+
+  const { data: history } = await query
 
   return (history ?? [])
     .filter(m => m.content_type === 'text' && m.content)
@@ -88,7 +97,7 @@ export async function generateAiReply(
   const [faqContext, hoursContext, historyContext, config] = await Promise.all([
     buildFaqContext(supabase),
     buildHoursContext(supabase),
-    buildHistoryMessages(supabase, conversationId),
+    buildHistoryMessages(supabase, conversationId, isNewConversation),
     supabase.from('config').select('company_name, assistant_name').maybeSingle().then(r => r.data),
   ])
 
